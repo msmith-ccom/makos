@@ -28,7 +28,6 @@ def find_version(*file_paths):
 
 # ------------------------------------------------------------------
 #                          POPULATE SETUP
-
 setup(
     name="makos",
     version=find_version("makos", "__init__.py"),
@@ -52,7 +51,7 @@ setup(
     install_requires=[
         "numpy",
         "scipy",
-        "matplotlib-base"
+        "matplotlib"
     ],
     python_requires='>=3.8',
     entry_points={

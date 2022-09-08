@@ -2,7 +2,7 @@ import logging
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-name = "mako"
+name = "makos"
 __version__ = "0.0.0"
 __author__ = "msmith@ccom.unh.edu"
 __license__ = "MIT license"

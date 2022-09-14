@@ -1,6 +1,6 @@
 from matplotlib import pyplot as plt
 from makos.sonar.position import position, position_plot
-from makos.sonar.shading import shading
+from makos.sonar.shading import shading, plot_1d, plot_2d
 
 if __name__ == '__main__':
 
@@ -21,10 +21,14 @@ if __name__ == '__main__':
     # Test the array shading functions
     snr_array = shading(snr_array=snr_array, array_dimension='along', window='chebwin',
                         at=25.)
-    snr_array = shading(snr_array=snr_array, array_dimension='along', window='tukey',
-                        alpha=0.5)
+    # snr_array = shading(snr_array=snr_array, array_dimension='along', window='tukey',
+    #                     alpha=0.5)
     snr_array = shading(snr_array=snr_array, array_dimension='across', window='chebwin',
                         at=25.)
-    snr_array = shading(snr_array=snr_array, array_dimension='along', window='boxcar')
+    # snr_array = shading(snr_array=snr_array, array_dimension='along', window='boxcar')
 
-print('Debug point!')
+    fig1 = plot_1d(snr_array, 1)
+
+    fig2 = plot_2d(snr_array)
+    plt.show()
+    print('Debug point!')

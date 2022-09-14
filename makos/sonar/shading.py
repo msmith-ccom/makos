@@ -1,5 +1,6 @@
 import numpy as np
 
+from matplotlib import pyplot as plt
 from scipy.signal import get_window
 from typing import Union
 
@@ -24,13 +25,7 @@ def shading(snr_array: dict, array_dimension: Union[str, int],
     if 'position' not in snr_array['elements'].keys():
         raise KeyError(f"Array element position data not found. Run position() ")
 
-    if array_dimension in (0, 'x', 'along'):
-        dim = 0
-    elif array_dimension in (1, 'y', 'across'):
-        dim = 1
-    else:
-        raise ValueError(f"Invalid input 'array_dimension'. Must be either ('x', "
-                         f"'along', 0) or ('y', 'across', 1)")
+    dim = _check_dim(array_dimension)
 
     if 'shading' not in snr_array.keys():
         snr_array['shading'] = dict()
@@ -88,3 +83,90 @@ def shading(snr_array: dict, array_dimension: Union[str, int],
         raise NotImplementedError(f"There is no support for dimensions beyond x and y")
 
     return snr_array
+
+
+def plot_1d(snr_array: dict, array_dim: Union[str, int]):
+    """ Plots the element shading terms along a given direction """
+
+    dim_title = {
+        0: "Along",
+        1: "Across",
+    }
+
+    dim = _check_dim(array_dim)
+    dims = snr_array['elements']['position'].shape
+
+    fig = plt.figure()
+    ax = fig.add_subplot()
+
+    if dim == 0:
+        try:
+            ax.stem(np.arange(dims[dim]), snr_array['shading']['along_window_terms'],
+                    basefmt=' ')
+        except KeyError as e:
+            raise KeyError(f"Array along shading terms not found. Make sure funct: "
+                           f"shading has been run") from e
+    else:
+        try:
+            ax.stem(np.arange(dims[dim]), snr_array['shading']['across_window_terms'],
+                    basefmt=' ')
+        except KeyError as e:
+            raise KeyError(f"Array across shading terms not found. Make sure funct: "
+                           f"shading has been run") from e
+
+    if snr_array['elements']['lattice_type'] == 'rectangular':
+        title_str = f"{dim_title[dim]} Shading Terms"
+    else:
+        title_str = f"{dim_title[dim]} Shading Terms \n Note element number double " \
+                    f"due to triangular lattice"
+    ax.set_title(title_str)
+    ax.set_xlabel("Element #")
+    ax.set_ylabel("Element shading coefficient")
+    ax.set_ylim(bottom=0.0)
+    ax.grid(visible=True)
+    return fig
+
+
+def plot_2d(snr_array: dict):
+    """ Plots the 2D Array shading terms as color image"""
+
+    # Get out the data
+    shade_weights = snr_array['shading']['array_weights']
+    dims = shade_weights.shape
+
+    fig, (ax, cax) = plt.subplots(ncols=2, nrows=1,
+                                  figsize=(2, 4),
+                                  gridspec_kw={'width_ratios': [1, 0.05]})
+    img = ax.imshow(shade_weights)
+    cbar = fig.colorbar(img, cax=cax, orientation='vertical')
+    cbar.set_label("Shading coefficient")
+
+    if snr_array['elements']['lattice_type'] == 'rectangular':
+        title_str = f"Shading Terms"
+    else:
+        title_str = f"Shading Terms \n Note element number double " \
+                    f"due to triangular lattice"
+    ax.set_title(title_str)
+    ax.set_xlabel("Across element #")
+    ax.set_ylabel("Along element #")
+
+    x_minor = np.arange(dims[1])
+    y_minor = np.arange((dims[0]))
+    ax.set_xticks(x_minor, minor=True)
+    ax.set_yticks(y_minor, minor=True)
+    ax.grid(visible=True, which='both', color='white', alpha=0.5)
+
+    ax.set_aspect('equal')
+    return fig
+
+
+def _check_dim(array_dimension) -> int:
+    """ Internal function to check dimension input"""
+    if array_dimension in (0, 'x', 'along'):
+        dim = 0
+    elif array_dimension in (1, 'y', 'across'):
+        dim = 1
+    else:
+        raise ValueError(f"Invalid input 'array_dimension'. Must be either ('x', "
+                         f"'along', 0) or ('y', 'across', 1)")
+    return dim

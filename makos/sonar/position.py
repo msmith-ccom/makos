@@ -2,6 +2,7 @@ import numpy as np
 
 from matplotlib import pyplot as plt
 from typing import Optional
+from warnings import warn
 
 dict_lattice_type = {'rectangular': 0, 'triangular': 1}
 dict_element_type = {'omni': 0, 'tonpilz': 1, 'lurtonaprx': 2}
@@ -55,6 +56,13 @@ def position(snr_array=None, num_ele_along: int = 1, num_ele_across: int = 1,
     if lattice not in dict_lattice_type.keys():
         raise ValueError(f"Invalid input for lattice. Must be either: "
                          f"{dict_lattice_type.keys()}")
+    else:
+        if (num_ele_along == 1) or (num_ele_across == 1):
+            # One of the array dimensions is singleton. Force rectangular array
+            lattice = 'rectangular'
+            warn(f"One Array dimension is singular, triangular lattice is not "
+                 f"possible. Setting lattice to rectangular")
+
     elemnts['lattice_type'] = lattice
     lat_id = dict_lattice_type[lattice]
 

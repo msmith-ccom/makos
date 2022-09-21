@@ -172,8 +172,8 @@ def position_plot(snr_array, num_dimensions: int = 2):
     if num_dimensions == 2:
         ax = fig.add_subplot()
         ax.scatter(pos[:, :, 1], pos[:, :, 0])
-        ax.set_xlabel('X (m)')
-        ax.set_ylabel('Y (m)')
+        ax.set_xlabel('Y (m)')
+        ax.set_ylabel('X (m)')
         ax.set_aspect('equal')
         lim_left, lim_right = plt.xlim()
         plt.xlim((lim_left-0.25, lim_right+0.25))

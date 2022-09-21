@@ -4,7 +4,8 @@ from matplotlib import pyplot as plt
 from scipy.signal import get_window, hilbert
 
 
-def pulse(snr_array: dict, amplitude: float, tau: float, fc: float, fs: float,
+def pulse(snr_array: dict, fc: float, amplitude: float = 1,
+          tau: float = 0.010,  fs: float = 120000,
           shading: str = 'boxcar', **kwargs) -> dict:
 
     if 'pulse' not in snr_array.keys():

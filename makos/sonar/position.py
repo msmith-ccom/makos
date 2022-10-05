@@ -1,6 +1,6 @@
 import numpy as np
+import plotly.graph_objects as go
 
-from matplotlib import pyplot as plt
 from typing import Optional
 from warnings import warn
 
@@ -117,10 +117,10 @@ def position(snr_array=None, num_ele_along: int = 1, num_ele_across: int = 1,
         z_out = depth * np.ones(shape=y_out.shape)
 
     else:
-        i_x = np.arange(0, 2*num_ele_along)[:, np.newaxis]
+        i_x = np.arange(0, 2 * num_ele_along)[:, np.newaxis]
         x = i_x * (spacing_along / 2)
 
-        i_y = np.arange(0, 2*num_ele_across)[np.newaxis, :]
+        i_y = np.arange(0, 2 * num_ele_across)[np.newaxis, :]
         y = i_y * (spacing_across / 2)
 
         [yy, xx] = np.meshgrid(y, x)
@@ -153,41 +153,80 @@ def position(snr_array=None, num_ele_along: int = 1, num_ele_across: int = 1,
     return snr_array
 
 
-def position_plot(snr_array, num_dimensions: int = 2):
-    """ Plot the element positions """
-
-    if num_dimensions not in [2, 3]:
-        raise ValueError(f"num_dimensions must be either 2 or 3.")
+def pos_plot_2d(snr_array: dict):
+    """ 2D scatter plot of array element positions"""
 
     # Grab the element positions
+    xx, yy, _ = _grab_pos_data(snr_array)
+    # Get pos bounds
+    xmin = np.floor(xx.min())
+    xmax = np.ceil(xx.max())
+    ymin = np.floor(yy.min())
+    ymax = np.ceil(yy.max())
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=yy, y=xx,
+        mode='markers',
+    ))
+    fig.update_traces(marker_size=5, marker_line_width=2)
+
+    # fig = px.scatter(df, x='y', y='x', color='black')
+    fig.update_yaxes(range=[xmin - .25, xmax + .25], constrain='domain')
+    fig.update_xaxes(range=[ymin - .25, ymax + .25], constrain='domain')
+    fig.update_yaxes(scaleanchor='x', scaleratio=1)
+
+    fig.update_layout(title={'text': "Array Element Positions", 'x': 0.5},
+                      xaxis_title="Y", yaxis_title="X")
+    return fig
+
+
+def pos_plot_3d(snr_array: dict):
+    # Grab position data
+    xx, yy, zz = _grab_pos_data(snr_array)
+    xmin = np.floor(xx.min())
+    xmax = np.ceil(xx.max())
+    ymin = np.floor(yy.min())
+    ymax = np.ceil(yy.max())
+    zmin = np.floor(zz.min())
+    zmax = np.ceil(zz.max())
+    dmax = np.ceil(np.max([xmax, ymax, zmax]))
+    dmin = np.floor(np.min([xmin, ymin, zmin]))
+    drange = [dmin - 0.25, dmax + 0.25]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter3d(
+        x=xx, y=yy, z=zz,
+        mode='markers',
+    ))
+    fig.update_traces(marker_size=5, marker_line_width=2)
+    fig.update_layout(
+        title=dict(
+            text="Array Element Positions",
+            x=0.5),
+        scene=dict(
+            xaxis=dict(range=list(reversed(drange)), title="X", zeroline=True,
+                       zerolinecolor='#b22222'),
+            yaxis=dict(range=drange, title="Y", zeroline=True,
+                       zerolinecolor='#b22222'),
+            zaxis=dict(range=list(reversed(drange)), title="Z", zeroline=True,
+                       zerolinecolor='#b22222')
+        ))
+
+    return fig
+
+
+# ## Private Methods ##
+def _grab_pos_data(snr_array: dict):
     try:
         pos = snr_array['elements']['position']
     except KeyError as e:
         raise KeyError(f"Make sure position function has been run") from e
 
-    # Create the figure
-    fig = plt.figure()
-
-    # Plot the figure
-    if num_dimensions == 2:
-        ax = fig.add_subplot()
-        ax.scatter(pos[:, :, 1], pos[:, :, 0])
-        ax.set_xlabel('Y (m)')
-        ax.set_ylabel('X (m)')
-        ax.set_aspect('equal')
-        lim_left, lim_right = plt.xlim()
-        plt.xlim((lim_left-0.25, lim_right+0.25))
-
-    else:
-        ax = fig.add_subplot(projection='3d')
-        ax.scatter(pos[:, :, 0], pos[:, :, 1], pos[:, :, 2])
-        ax.set_xlabel('X (m)')
-        ax.set_ylabel('Y (m)')
-        ax.set_zlabel('Z (m)')
-
-        limits = np.array([getattr(ax, f'get_{axis}lim')() for axis in 'xyz'])
-        ax.set_box_aspect(np.ptp(limits + 0.25, axis=1))
-
-    ax.set_title('Array Element Positions')
-
-    return fig
+    xx = pos[:, :, 0].flatten()[:, None]
+    xx = xx[~np.isnan(xx)]
+    yy = pos[:, :, 1].flatten()[:, None]
+    yy = yy[~np.isnan(yy)]
+    zz = pos[:, :, 2].flatten()[:, None]
+    zz = zz[~np.isnan(zz)]
+    return xx, yy, zz

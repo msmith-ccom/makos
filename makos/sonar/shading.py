@@ -1,6 +1,6 @@
 import numpy as np
+import plotly.graph_objects as go
 
-from matplotlib import pyplot as plt
 from scipy.signal import get_window
 from typing import Union
 
@@ -38,12 +38,12 @@ def shading(snr_array: dict, array_dimension: Union[str, int],
     if not kwargs:
         window_terms = get_window(window, dims[dim], fftbins=False)
 
-    else:       # There are extra parameters, wrap in tuple
+    else:  # There are extra parameters, wrap in tuple
         win_params = (window,) + tuple(kwargs.values())
         window_terms = get_window(win_params, dims[dim], fftbins=False)
 
     # ## Fill output dictionary and combine window terms if necessary ##
-    if dim == 0:     # Along shading
+    if dim == 0:  # Along shading
         tmp_0 = np.tile(window_terms[:, None], (1, dims[1]))
         if 'array_weights' in shade_setting:
             # We have already run array shading before: Compose new weights.
@@ -61,7 +61,7 @@ def shading(snr_array: dict, array_dimension: Union[str, int],
         shade_setting['along_window_type'] = window
         shade_setting['along_window_terms'] = window_terms
 
-    elif dim == 1:     # Across shading
+    elif dim == 1:  # Across shading
         tmp_1 = np.tile(window_terms[None, :], (dims[0], 1))
         if 'array_weights' in shade_setting:
             # We have already run array shading before: Compose new weights
@@ -96,20 +96,15 @@ def plot_1d(snr_array: dict, array_dim: Union[str, int]):
     dim = _check_dim(array_dim)
     dims = snr_array['elements']['position'].shape
 
-    fig = plt.figure()
-    ax = fig.add_subplot()
-
     if dim == 0:
         try:
-            ax.stem(np.arange(dims[dim]), snr_array['shading']['along_window_terms'],
-                    basefmt=' ')
+            window_terms = snr_array['shading']['along_window_terms']
         except KeyError as e:
             raise KeyError(f"Array along shading terms not found. Make sure funct: "
                            f"shading has been run") from e
     else:
         try:
-            ax.stem(np.arange(dims[dim]), snr_array['shading']['across_window_terms'],
-                    basefmt=' ')
+            window_terms = snr_array['shading']['across_window_terms']
         except KeyError as e:
             raise KeyError(f"Array across shading terms not found. Make sure funct: "
                            f"shading has been run") from e
@@ -117,13 +112,39 @@ def plot_1d(snr_array: dict, array_dim: Union[str, int]):
     if snr_array['elements']['lattice_type'] == 'rectangular':
         title_str = f"{dim_title[dim]} Shading Terms"
     else:
-        title_str = f"{dim_title[dim]} Shading Terms \n Note element number double " \
-                    f"due to triangular lattice"
-    ax.set_title(title_str)
-    ax.set_xlabel("Element #")
-    ax.set_ylabel("Element shading coefficient")
-    ax.set_ylim(bottom=0.0)
-    ax.grid(visible=True)
+        title_str = f"{dim_title[dim]} Shading Terms <br> " \
+                    f"Note element number double due to triangular lattice"
+    window_index = np.arange(dims[dim])
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=window_index, y=window_terms,
+        mode='markers',
+        marker=dict(
+            size=10,
+            line_width=2,
+            color='black'
+        ),
+        error_y=dict(
+            type='data',
+            symmetric=False,
+            array=np.zeros(shape=window_index.shape),
+            arrayminus=window_terms,
+            width=0
+        ),
+        hovertemplate="(%{x:d},%{y:.5f})<extra></extra>"
+    ))
+
+    fig.update_layout(xaxis_title="Window term (n)",
+                      yaxis_title="Window term amplitude",
+                      yaxis_rangemode='tozero',
+                      title=dict(
+                          text=title_str,
+                          x=0.5
+                      ),
+                      showlegend=False
+                      )
     return fig
 
 
@@ -132,31 +153,46 @@ def plot_2d(snr_array: dict):
 
     # Get out the data
     shade_weights = snr_array['shading']['array_weights']
-    dims = shade_weights.shape
+    x = snr_array['elements']['position'][:, :, 0]
+    dims = list(shade_weights.shape)
 
-    fig, (ax, cax) = plt.subplots(ncols=2, nrows=1,
-                                  figsize=(2, 4),
-                                  gridspec_kw={'width_ratios': [1, 0.05]})
-    img = ax.imshow(shade_weights)
-    cbar = fig.colorbar(img, cax=cax, orientation='vertical')
-    cbar.set_label("Shading coefficient")
+    # Mask data
+    nan_inds = np.isnan(x)
+    shade_weights[nan_inds] = np.nan
+
+    if dims[0] > dims[1]:
+        shade_weights = shade_weights.T
+        dims = list(reversed(dims))
 
     if snr_array['elements']['lattice_type'] == 'rectangular':
         title_str = f"Shading Terms"
     else:
-        title_str = f"Shading Terms \n Note element number double " \
-                    f"due to triangular lattice"
-    ax.set_title(title_str)
-    ax.set_xlabel("Across element #")
-    ax.set_ylabel("Along element #")
+        title_str = f"Shading Terms <br>" \
+                    f" Note element number double due to triangular lattice"
 
-    x_minor = np.arange(dims[1])
-    y_minor = np.arange((dims[0]))
-    ax.set_xticks(x_minor, minor=True)
-    ax.set_yticks(y_minor, minor=True)
-    ax.grid(visible=True, which='both', color='white', alpha=0.5)
+    # Plot the figure
+    fig = go.Figure()
+    fig.add_trace(go.Heatmap(
+        z=shade_weights, x=list(range(dims[0])), y=list(range(dims[1])),
+        colorscale='Viridis',
+        colorbar=dict(
+            title="Shading coefficient"
+        ),
+        xgap=1, ygap=1
+    ))
+    fig.update_layout(
+        xaxis=dict(title="Array long axis index (n)"),
+        yaxis=dict(
+            scaleanchor='x',
+            title="Array shor axis index (m)"
+        ),
+        title=dict(
+            text=title_str,
+            x=0.5
+        )
 
-    ax.set_aspect('equal')
+    )
+
     return fig
 
 
